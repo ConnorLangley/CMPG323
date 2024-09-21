@@ -1,0 +1,52 @@
+﻿@page
+@model IndexModel
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+
+<div class="container mt-5">
+    <h2 class="mb-4">Upload File</h2>
+
+    <form method="post" enctype="multipart/form-data" class="border p-4 rounded bg-light">
+        <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" name="subject" class="form-control" placeholder="Enter the subject of the file" required>
+        </div>
+
+        <div class="form-group">
+            <label for="year">Year</label>
+            <input type="number" id="year" name="year" class="form-control" placeholder="Enter the year" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">File Description</label>
+            <textarea id="description" name="description" class="form-control" placeholder="Enter a brief description of the file" rows="3" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="fileName">File Name</label>
+            <input type="text" id="fileName" name="fileName" class="form-control" placeholder="Enter the desired file name (without extension)" required>
+        </div>
+
+        <div class="form-group">
+            <label for="uploadedFile">Choose File (PDF, Word, PowerPoint)</label>
+            <input type="file" id="uploadedFile" name="uploadedFile" class="form-control-file" accept=".pdf,.doc,.docx,.ppt,.pptx" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+
+    @if (Model.UploadSuccess)
+    {
+        <div class="alert alert-success mt-3">File uploaded successfully with metadata!</div>
+    }
+
+    @if (ModelState.ErrorCount > 0)
+    {
+        <div class="alert alert-danger mt-3">
+            @foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <p>@error.ErrorMessage</p>
+            }
+        </div>
+    }
+</div>
