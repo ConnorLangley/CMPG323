@@ -9,7 +9,9 @@
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.22.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Microsoft.SqlServer.IntegrationServices.Build" Version="1.1.0" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.5.1" />
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 

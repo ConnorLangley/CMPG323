@@ -1,0 +1,13 @@
+﻿@page
+@model HomeModel
+
+<div class="container mt-5">
+    <h2>Welcome to the Home Page!</h2>
+    <p>You are logged in.</p>
+
+    <!-- Simplified Logout Form -->
+    <form method="post" asp-page="/Index" class="mt-3">
+        <input type="hidden" name="logout" value="true" />
+        <button type="submit" class="btn btn-danger">Logout</button>
+    </form>
+</div>
