@@ -1,13 +1,19 @@
 using Azure.Storage.Blobs;
-using Bigone.Services;
+using Bigone.Services; // Ensure this matches your folder structure
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load configuration
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddSingleton<PdfWatermarkService>();
-builder.Services.AddSession(); // Add this line
+builder.Services.AddSession(); // Add session support
 
 // Register Blob Service Client
 string blobConnectionString = builder.Configuration["AzureStorage:ConnectionString"];
@@ -17,8 +23,9 @@ if (string.IsNullOrEmpty(blobConnectionString))
 }
 builder.Services.AddSingleton(x => new BlobServiceClient(blobConnectionString));
 
-var connectionString = builder.Configuration.GetConnectionString("SqlServerConnection");
-builder.Services.AddSingleton(new SqlDbService(connectionString));
+// Get SQL Server connection string from configuration
+var sqlConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection");
+builder.Services.AddSingleton(new SqlDbService(sqlConnectionString, builder.Configuration, new BlobServiceClient(blobConnectionString))); // Pass the BlobServiceClient
 
 // Configure authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -28,8 +35,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 var app = builder.Build();
-
-
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

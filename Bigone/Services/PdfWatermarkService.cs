@@ -1,48 +1,48 @@
-﻿using PdfSharp.Drawing;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
-using System.IO;
 
 namespace Bigone.Services
 {
     public class PdfWatermarkService
     {
-        public byte[] AddWatermarkToPdf(Stream inputPdfStream, string watermarkText)
+        public void AddPageWatermark(string inputFilePath, string outputFilePath)
         {
-            // Load the PDF from the stream
-            PdfDocument document = PdfReader.Open(inputPdfStream, PdfDocumentOpenMode.Modify);
+            // Path to the watermark PDF
+            string watermarkFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "watermarks", "watermark.pdf");
 
-            // Set up font and brush for the watermark
-            XFont font = new XFont("Arial", 60, XFontStyleEx.Bold); // Increased font size for visibility
-            XBrush brush = new XSolidBrush(XColor.FromArgb(128, 255, 0, 0)); // Semi-transparent red color
-
-            // Iterate through each page and add the watermark
-            foreach (PdfPage page in document.Pages)
+            try
             {
-                // Create a graphics object for the page
-                XGraphics gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
+                // Create a new PDF document for output
+                using (PdfDocument outputDocument = new PdfDocument())
+                {
+                    // Load the original document
+                    PdfDocument inputDocument = PdfReader.Open(inputFilePath, PdfDocumentOpenMode.Import);
 
-                // Get the page size for watermark placement
-                double pageWidth = page.Width.Point;
-                double pageHeight = page.Height.Point;
+                    // Load the watermark document
+                    PdfDocument watermarkDocument = PdfReader.Open(watermarkFilePath, PdfDocumentOpenMode.Import);
+                    var watermarkPage = watermarkDocument.Pages[0];
 
-                // Calculate the position to center the watermark text
-                XSize textSize = gfx.MeasureString(watermarkText, font);
-                double x = (pageWidth - textSize.Width) / 2;  // Center horizontally
-                double y = (pageHeight - textSize.Height) / 2; // Center vertically
+                    // Add the watermark page as the first page
+                    outputDocument.AddPage(watermarkPage);
 
-                // Rotate the text to make it diagonal across the page
-                gfx.RotateAtTransform(-45, new XPoint(pageWidth / 2, pageHeight / 2));
+                    // Copy all pages from the original document to the new document
+                    foreach (var page in inputDocument.Pages)
+                    {
+                        outputDocument.AddPage(page);
+                    }
 
-                // Draw the watermark on the page
-                gfx.DrawString(watermarkText, font, brush, new XPoint(x, y));
+                    // Save the output document
+                    outputDocument.Save(outputFilePath);
+                }
             }
-
-            // Save the modified PDF to a memory stream
-            using (MemoryStream outputStream = new MemoryStream())
+            catch (Exception ex)
             {
-                document.Save(outputStream, false);
-                return outputStream.ToArray(); // Return the watermarked PDF as a byte array
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                throw; // Rethrow or handle as needed
             }
         }
     }

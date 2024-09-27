@@ -1,35 +1,38 @@
-
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Spire.Doc; 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Bigone.Services;
+using Bigone.Services; 
 
 public class UploadPageModel : PageModel
 {
     private readonly BlobServiceClient _blobServiceClient;
     private readonly IConfiguration _configuration;
     private readonly SqlDbService _sqlDbService;
+    private readonly PdfWatermarkService _pdfWatermarkService;
 
-    public UploadPageModel(BlobServiceClient blobServiceClient, IConfiguration configuration, SqlDbService sqlDbService)
+    public UploadPageModel(BlobServiceClient blobServiceClient,IConfiguration configuration,SqlDbService sqlDbService,PdfWatermarkService pdfWatermarkService)
     {
+        // Initialize the services
         _blobServiceClient = blobServiceClient;
         _configuration = configuration;
         _sqlDbService = sqlDbService;
+        _pdfWatermarkService = pdfWatermarkService; 
     }
 
     [BindProperty]
     public string Subject { get; set; }
 
     [BindProperty]
-    public int Year { get; set; }
+    public int Grade { get; set; }
 
     [BindProperty]
-    public string Description { get; set; }
+    public string Keywords { get; set; }
 
     [BindProperty]
     public string FileName { get; set; }
@@ -39,12 +42,10 @@ public class UploadPageModel : PageModel
 
     public bool UploadSuccess { get; set; }
 
-    // Property to indicate if connected to the database
     public bool IsConnectedToDatabase { get; private set; }
 
     public async Task OnGetAsync()
     {
-        // Check if connected to the database when loading the page
         IsConnectedToDatabase = await _sqlDbService.CheckConnectionAsync();
     }
 
@@ -57,29 +58,30 @@ public class UploadPageModel : PageModel
         }
 
         var fileExtension = Path.GetExtension(UploadedFile.FileName).ToLower();
-        var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".ppt", ".pptx" };
+        var allowedExtensions = new[] { ".pdf", ".doc", ".docx" };
 
         if (!Array.Exists(allowedExtensions, ext => ext == fileExtension))
         {
-            ModelState.AddModelError(string.Empty, "Invalid file type. Only PDF, Word, and PowerPoint files are allowed.");
+            ModelState.AddModelError(string.Empty, "Invalid file type. Only PDF and Word files are allowed.");
             return Page();
         }
 
-        var fullFileName = $"{FileName}{fileExtension}";
         var uploadDate = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         var containerName = _configuration["AzureStorage:containerName"];
-
-        // Constructing the storage location path
+        string fullFileName = $"{FileName}.pdf";
         string storageLocation = $"{containerName}/{fullFileName}";
 
-        byte[] fileBytes;
+        string tempOriginalFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_original.pdf");
+        string tempWatermarkedFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_watermarked.pdf");
 
         try
         {
-            using (var ms = new MemoryStream())
+            byte[] fileBytes;
+
+            using (var memoryStream = new MemoryStream())
             {
-                await UploadedFile.CopyToAsync(ms);
-                fileBytes = ms.ToArray(); // Read the uploaded file into bytes
+                await UploadedFile.CopyToAsync(memoryStream);
+                fileBytes = memoryStream.ToArray();
             }
 
             if (fileBytes == null || fileBytes.Length == 0)
@@ -87,47 +89,96 @@ public class UploadPageModel : PageModel
                 throw new InvalidOperationException("No data was read from the uploaded file.");
             }
 
-            using (var stream = new MemoryStream(fileBytes))
+            MemoryStream outputStream = new MemoryStream();
+
+            if (fileExtension == ".doc" || fileExtension == ".docx")
+            {
+                using (MemoryStream wordStream = new MemoryStream(fileBytes))
+                {
+                    Document document = new Document();
+                    document.LoadFromStream(wordStream, FileFormat.Docx);
+                    document.SaveToStream(outputStream, FileFormat.PDF);
+                }
+            }
+            else if (fileExtension == ".pdf")
+            {
+                outputStream.Write(fileBytes, 0, fileBytes.Length);
+            }
+
+            outputStream.Position = 0;
+
+            // Write to temporary original PDF
+            using (var tempOriginalFileStream = new FileStream(tempOriginalFilePath, FileMode.Create, FileAccess.Write))
+            {
+                await outputStream.CopyToAsync(tempOriginalFileStream);
+                tempOriginalFileStream.Flush();
+            }
+
+            _pdfWatermarkService.AddPageWatermark(tempOriginalFilePath, tempWatermarkedFilePath);
+
+            // Reset stream position for the watermarked output stream
+            using (var watermarkedStream = new FileStream(tempWatermarkedFilePath, FileMode.Open, FileAccess.Read))
             {
                 var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
                 await containerClient.CreateIfNotExistsAsync();
-
                 var blobClient = containerClient.GetBlobClient(fullFileName);
 
-                // Create a consistent metadata dictionary
-                var metadata = new Dictionary<string, string>
+                await blobClient.UploadAsync(watermarkedStream, true);
+
+                // Set metadata for the file
+                var metadata = new Dictionary<string, string>()
             {
-                { "Subject", Subject },
-                { "Year", Year.ToString() },
-                { "Description", Description },
-                { "FileName", fullFileName },
-                { "UploadDate", uploadDate },
-                { "StorageLocation", storageLocation } // Save storage location in metadata
+                {"Subject", Subject},
+                {"Grade", Grade.ToString()},
+                {"Keywords", Keywords},
+                {"FileName", fullFileName},
+                {"UploadDate", uploadDate},
+                {"StorageLocation", storageLocation},
+                {"File_ID", (await _sqlDbService.GetNextFileIdAsync()).ToString()}
             };
 
-                // Upload the file to Blob Storage
-                await blobClient.UploadAsync(stream, true);
                 await blobClient.SetMetadataAsync(metadata);
 
                 // Insert metadata into SQL Server
-                int userId = 123; // Hardcoded User ID
-                bool insertSuccess = await _sqlDbService.InsertFileMetadataAsync(userId, uploadDate, Subject, Year, Description, storageLocation);
+                int userId = 123; 
+                bool insertSuccess = await _sqlDbService.InsertFileMetadataAsync(userId, uploadDate, Subject, Grade, Keywords, storageLocation);
 
                 if (!insertSuccess)
                 {
                     ModelState.AddModelError(string.Empty, "Failed to insert file metadata into the database.");
                     return Page();
                 }
-            }
 
-            IsConnectedToDatabase = await _sqlDbService.CheckConnectionAsync();
-            UploadSuccess = true;
-            return Page();
+                IsConnectedToDatabase = await _sqlDbService.CheckConnectionAsync();
+                UploadSuccess = true;
+
+                return Page();
+            }
         }
         catch (Exception ex)
         {
             ModelState.AddModelError(string.Empty, $"An error occurred: {ex.Message}");
+
+            if (ex is iText.Kernel.Exceptions.PdfException pdfEx)
+            {
+                Console.WriteLine($"PDF Exception: {pdfEx.Message}");
+                ModelState.AddModelError(string.Empty, $"PDF processing error: {pdfEx.Message}");
+            }
+
             return Page();
+        }
+        finally
+        {
+            // Clean up temporary files if necessary
+            if (!string.IsNullOrEmpty(tempOriginalFilePath) && System.IO.File.Exists(tempOriginalFilePath))
+            {
+                try { System.IO.File.Delete(tempOriginalFilePath); } catch { /* Log or handle deletion error */ }
+            }
+
+            if (!string.IsNullOrEmpty(tempWatermarkedFilePath) && System.IO.File.Exists(tempWatermarkedFilePath))
+            {
+                try { System.IO.File.Delete(tempWatermarkedFilePath); } catch { /* Log or handle deletion error */ }
+            }
         }
     }
 }
