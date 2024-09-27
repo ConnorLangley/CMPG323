@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35312.102
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CMPG 323 createAccount", "CMPG 323 createAccount\CMPG 323 createAccount.csproj", "{4958F05E-759F-4147-ABB6-69CDC1C32F62}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4958F05E-759F-4147-ABB6-69CDC1C32F62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4958F05E-759F-4147-ABB6-69CDC1C32F62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4958F05E-759F-4147-ABB6-69CDC1C32F62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4958F05E-759F-4147-ABB6-69CDC1C32F62}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B6F89B81-DC66-4095-A1F6-C69A8F536236}
+	EndGlobalSection
+EndGlobal
