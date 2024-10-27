@@ -230,7 +230,7 @@ namespace Proj323.Controllers
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@File_ID", nextFileId);
-                        cmd.Parameters.AddWithValue("@User_ID", 123);
+                        cmd.Parameters.AddWithValue("@User_ID", GetSessionInfo());
                         cmd.Parameters.AddWithValue("@Subject", model.Subject);
                         cmd.Parameters.AddWithValue("@Grade", model.Year);
                         cmd.Parameters.AddWithValue("@Keywords", model.Keywords);
