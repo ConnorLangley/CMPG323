@@ -33,6 +33,22 @@ namespace Proj323.Controllers
             _logger = logger;
         }
 
+        [HttpGet("Session")]
+        public IEnumerable<string> GetSessionInfo()
+        {
+            List<string> sessionInfo = new List<string>();
+
+            // Retrieve the username from the session
+            var userName = HttpContext.Session.GetString(SessionVarubles.SessionKeyUsername);
+            if (string.IsNullOrEmpty(userName))
+            {
+                return new string[] { "No user is logged in." };
+            }
+
+            sessionInfo.Add(userName);
+            return sessionInfo;
+        }
+        
         [HttpPost]
         public async Task<IActionResult> UploadFile([FromForm] FileUploadViewModel model)
         {
