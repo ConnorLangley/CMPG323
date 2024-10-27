@@ -25,6 +25,11 @@ namespace Proj323.Controllers
             HttpContext.Session.SetString(SessionVarubles.SessionKeyUsername, username);
         }
 
+        public void SetRoleSession(string role)
+        {
+            HttpContext.Session.SetString(SessionVarubles.SessionKeyRole, role);
+        }
+        
         // Method to get session information
         [HttpGet("Session")]
         public IEnumerable<string> GetSessionInfo()
@@ -33,12 +38,14 @@ namespace Proj323.Controllers
 
             // Retrieve the username from the session
             var userName = HttpContext.Session.GetString(SessionVarubles.SessionKeyUsername);
+            var Role = HttpContext.Session.GetString(SessionVarubles.SessionKeyRole);
             if (string.IsNullOrEmpty(userName))
             {
                 return new string[] { "No user is logged in." };
             }
 
             sessionInfo.Add(userName);
+            sessionInfo.Add(Role);
             return sessionInfo;
         }
 
